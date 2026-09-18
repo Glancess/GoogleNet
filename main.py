@@ -8,6 +8,7 @@ from engine.evaluate import evaluate
 from Configure import config
 from Model.Googlenet import GoogleNet
 from utils.kaiming import init_weights
+from torch.utils.tensorboard import SummaryWriter
 
 
 def set_seed(seed):
@@ -20,7 +21,7 @@ def set_seed(seed):
 
 
 def main():
-
+    writer = SummaryWriter(log_dir="runs/googlenet_cifar10")
     set_seed(config.SEED)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,7 +52,14 @@ def main():
         # =========================
         # Train
         # =========================
-        train_loss, train_top1, train_top5 = train_one_epoch(
+        (
+            train_loss,
+            train_top1,
+            train_top5,
+            epoch_main_loss,
+            epoch_aux1_loss,
+            epoch_aux2_loss,
+        ) = train_one_epoch(
             model=model,
             train_loader=train_loader,
             criterion=criterion,
@@ -70,7 +78,33 @@ def main():
             device=device,
             topk=config.TOPK,
         )
+        writer.add_scalar("Loss/train_total", train_loss, epoch)
+        writer.add_scalar("Loss/train_aux1", epoch_aux1_loss, epoch)
+        writer.add_scalar("Loss/train_aux2", epoch_aux2_loss, epoch)
 
+        writer.add_scalars(
+            "Loss/main",
+            {
+                "train": epoch_main_loss,
+                "validation": val_loss,
+            },
+            epoch,
+        )
+
+        writer.add_scalars(
+            "Accuracy/Top1",
+            {
+                "train": train_top1,
+                "validation": val_top1,
+            },
+            epoch,
+        )
+
+        writer.add_scalar(
+            "Optimization/learning_rate",
+            optimizer.param_groups[0]["lr"],
+            epoch,
+        )
         print(
             f"Epoch [{epoch + 1}/{config.EPOCHS}] "
             f"Train Loss: {train_loss:.4f} "
@@ -97,6 +131,7 @@ def main():
             )
 
     print(f"Best Validation Top1: " f"{best_val_top1 * 100:.2f}%")
+    writer.close()
 
 
 if __name__ == "__main__":

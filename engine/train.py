@@ -12,6 +12,10 @@ def train_one_epoch(
     model.train()
 
     total_loss = 0.0
+    total_main_loss = 0.0
+    total_aux1_loss = 0.0
+    total_aux2_loss = 0.0
+
     total_samples = 0
     total_top1 = 0.0
     total_top5 = 0.0
@@ -28,12 +32,12 @@ def train_one_epoch(
         loss_aux2 = criterion(aux2, targets)
 
         loss = loss_main + 0.3 * loss_aux1 + 0.3 * loss_aux2
-        print(
-            f"main={loss_main.item():.4f}, "
-            f"aux1={loss_aux1.item():.4f}, "
-            f"aux2={loss_aux2.item():.4f}, "
-            f"total={loss.item():.4f}"
-        )
+        # print(
+        #     f"main={loss_main.item():.4f}, "
+        #     f"aux1={loss_aux1.item():.4f}, "
+        #     f"aux2={loss_aux2.item():.4f}, "
+        #     f"total={loss.item():.4f}"
+        # )
         loss.backward()
         optimizer.step()
 
@@ -46,6 +50,9 @@ def train_one_epoch(
         batch_size = targets.size(0)
 
         total_loss += loss.item() * batch_size
+        total_main_loss += loss_main.item() * batch_size
+        total_aux1_loss += loss_aux1.item() * batch_size
+        total_aux2_loss += loss_aux2.item() * batch_size
         total_top1 += top1 * batch_size
         total_top5 += top5 * batch_size
         total_samples += batch_size
@@ -53,5 +60,17 @@ def train_one_epoch(
     epoch_loss = total_loss / total_samples
     epoch_top1 = total_top1 / total_samples
     epoch_top5 = total_top5 / total_samples
+    epoch_loss = total_loss / total_samples
 
-    return epoch_loss, epoch_top1, epoch_top5
+    epoch_main_loss = total_main_loss / total_samples
+    epoch_aux1_loss = total_aux1_loss / total_samples
+    epoch_aux2_loss = total_aux2_loss / total_samples
+
+    return (
+        epoch_loss,
+        epoch_top1,
+        epoch_top5,
+        epoch_main_loss,
+        epoch_aux1_loss,
+        epoch_aux2_loss,
+    )
