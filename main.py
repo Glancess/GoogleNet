@@ -2,13 +2,11 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-
-from Model import Googlenet
 from dataset.loader import get_loaders
 from engine.train import train_one_epoch
 from engine.evaluate import evaluate
 from Configure import config
-from Model import Googlenet
+from Model.Googlenet import GoogleNet
 
 
 def set_seed(seed):
