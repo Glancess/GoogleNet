@@ -7,6 +7,7 @@ from engine.train import train_one_epoch
 from engine.evaluate import evaluate
 from Configure import config
 from Model.Googlenet import GoogleNet
+from utils.kaiming import init_weights
 
 
 def set_seed(seed):
@@ -33,7 +34,7 @@ def main():
     train_loader, val_loader, _ = get_loaders(batch_size=config.BATCH_SIZE)
 
     model = GoogleNet().to(device)
-
+    model.apply(init_weights)
     criterion = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.SGD(

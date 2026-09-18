@@ -28,7 +28,12 @@ def train_one_epoch(
         loss_aux2 = criterion(aux2, targets)
 
         loss = loss_main + 0.3 * loss_aux1 + 0.3 * loss_aux2
-
+        print(
+            f"main={loss_main.item():.4f}, "
+            f"aux1={loss_aux1.item():.4f}, "
+            f"aux2={loss_aux2.item():.4f}, "
+            f"total={loss.item():.4f}"
+        )
         loss.backward()
         optimizer.step()
 
