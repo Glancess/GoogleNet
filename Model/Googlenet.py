@@ -125,39 +125,39 @@ class GoogleNet(nn.Module):
     def forward(self, x):
 
         x = self.stem(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception3a(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception3b(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.maxpool(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception4a(x)
-        print(x.shape)
+        # print(x.shape)
         if self.training:
             aux1 = self.aux1(x)  # <-- 这里
 
         x = self.inception4b(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception4c(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception4d(x)
-        print(x.shape)
+        # print(x.shape)
 
         if self.training:
             aux2 = self.aux2(x)  # <-- 这里
 
         x = self.inception4e(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception5a(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.inception5b(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.avgpool(x)
-        print(x.shape)
+        # print(x.shape)
         x = torch.flatten(x, 1)
         main = self.fc(x)
-        print(main)
+        # print(main)
         if self.training:
             return main, aux1, aux2
         return main
