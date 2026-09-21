@@ -12,6 +12,11 @@ from Model.Googlenet import GoogleNet
 from utils.kaiming import init_weights
 from torch.utils.tensorboard import SummaryWriter
 
+# 与 dataset/dataset.py 中 transforms.Normalize 使用的参数一致
+CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR10_STD = (0.2470, 0.2435, 0.2616)
+
+
 # =========================================================
 # Activation Probe
 # =========================================================
@@ -38,6 +43,51 @@ def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+
+
+# =========================================================
+# Grad-CAM visualization helpers
+# =========================================================
+
+
+def denormalize_cifar10(images):
+    """把送入模型的标准化张量恢复为 TensorBoard 可显示的 RGB 图像。"""
+
+    mean = images.new_tensor(CIFAR10_MEAN).view(1, 3, 1, 1)
+    std = images.new_tensor(CIFAR10_STD).view(1, 3, 1, 1)
+
+    return (images * std + mean).clamp(0.0, 1.0)
+
+
+def colorize_gradcam(cam):
+    """把 [B,1,H,W]、范围 0~1 的 CAM 转成蓝-青-黄-红热力图。"""
+
+    value = cam.clamp(0.0, 1.0)
+
+    red = (1.5 - torch.abs(4.0 * value - 3.0)).clamp(0.0, 1.0)
+    green = (1.5 - torch.abs(4.0 * value - 2.0)).clamp(0.0, 1.0)
+    blue = (1.5 - torch.abs(4.0 * value - 1.0)).clamp(0.0, 1.0)
+
+    return torch.cat([red, green, blue], dim=1)
+
+
+def make_gradcam_visualizations(images, cam):
+    """生成原图、彩色热力图和映射到原图相同位置的叠加图。"""
+
+    original_images = denormalize_cifar10(images)
+    heatmap_images = colorize_gradcam(cam)
+
+    # CAM 越强，彩色热力图越明显；CAM 接近 0 时尽量保留原图。
+    overlay_alpha = 0.45 * cam.clamp(0.0, 1.0)
+    overlay_images = (
+        (1.0 - overlay_alpha) * original_images + overlay_alpha * heatmap_images
+    ).clamp(0.0, 1.0)
+
+    return (
+        original_images.detach(),
+        heatmap_images.detach(),
+        overlay_images.detach(),
+    )
 
 
 # =========================================================
@@ -416,12 +466,38 @@ def main():
                 cam_images,
             )
 
-            # [8,1,32,32]
+            (
+                original_images,
+                heatmap_images,
+                overlay_images,
+            ) = make_gradcam_visualizations(
+                cam_images,
+                cam,
+            )
+
+            # 三组图的样本顺序完全一致：
+            # 第 i 张 Original、Raw_Heatmap、Overlay 都对应同一输入。
             writer.add_images(
-                f"GradCAM/Epoch_{epoch + 1}",
+                "GradCAM/Original",
+                original_images.cpu(),
+                epoch,
+            )
+
+            # 这是 inception5b Grad-CAM 的原始 0~1 响应图。
+            writer.add_images(
+                "GradCAM/Raw_Heatmap",
                 cam.cpu(),
                 epoch,
             )
+
+            # 彩色响应图按相同空间位置覆盖到反归一化后的原图。
+            writer.add_images(
+                "GradCAM/Overlay",
+                overlay_images.cpu(),
+                epoch,
+            )
+
+            writer.flush()
 
             # 打印 true / predicted
             print(f"\nGrad-CAM Epoch {epoch + 1}")
