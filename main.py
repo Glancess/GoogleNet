@@ -224,7 +224,7 @@ def main():
 
     # 只在这些 epoch 做 Grad-CAM
     # epoch 从 0 开始
-    gradcam_epochs = [0, 9, 29, 59, 99]
+    gradcam_epochs = [0, 9, 15, 20, 29]
 
     # =====================================================
     # Train
