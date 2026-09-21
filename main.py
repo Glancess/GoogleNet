@@ -10,6 +10,15 @@ from Model.Googlenet import GoogleNet
 from utils.kaiming import init_weights
 from torch.utils.tensorboard import SummaryWriter
 
+activations = {}
+
+
+def save_activation(name):
+    def hook(module, inputs, output):
+        activations[name] = output.detach()
+
+    return hook
+
 
 def set_seed(seed):
     random.seed(seed)
@@ -36,6 +45,12 @@ def main():
 
     model = GoogleNet().to(device)
     model.apply(init_weights)
+
+    model.inception3b.register_forward_hook(save_activation("3b"))
+    model.inception4a.register_forward_hook(save_activation("4a"))
+    model.inception4d.register_forward_hook(save_activation("4d"))
+    model.inception5b.register_forward_hook(save_activation("5b"))
+
     criterion = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.SGD(
@@ -46,7 +61,9 @@ def main():
     )
 
     best_val_top1 = 0.0
-
+    # 探针！
+    probe_images, probe_targets = next(iter(val_loader))
+    probe_images = probe_images.to(device)
     for epoch in range(config.EPOCHS):
 
         # =========================
@@ -129,9 +146,24 @@ def main():
                 },
                 "googlenet_cifar10_best.pth",
             )
+        # =========================
+        # 固定 probe batch
+        # =========================
+        model.eval()
+
+        with torch.no_grad():
+            _ = model(probe_images)
+
+        for name in ["3b", "4a", "4d", "5b"]:
+            x = activations[name]
+
+            writer.add_scalar(
+                f"ActivationStd/{name}",
+                x.std().item(),
+                epoch,
+            )
 
     print(f"Best Validation Top1: " f"{best_val_top1 * 100:.2f}%")
-    writer.close()
 
 
 if __name__ == "__main__":
