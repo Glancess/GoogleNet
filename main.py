@@ -155,13 +155,22 @@ def main():
             _ = model(probe_images)
 
         for name in ["3b", "4a", "4d", "5b"]:
-            x = activations[name]
+            x = activations[name]  # [B,C,H,W]
 
-            writer.add_scalar(
-                f"ActivationStd/{name}",
-                x.std().item(),
-                epoch,
-            )
+            # 整体 activation 数值尺度
+            writer.add_scalar(f"ActivationStd/{name}", x.std().item(), epoch)
+
+            # 每张图片，每个 channel 的整体响应
+            feature = x.mean(dim=(2, 3))  # [B,C]
+
+            # 对每个 channel：
+            # 看不同图片之间响应差异有多大
+            sample_std = feature.std(dim=0)  # [C]
+
+            # 再把 C 个 channel 的 std 求平均
+            sample_variation = sample_std.mean()
+
+            writer.add_scalar(f"SampleVariation/{name}", sample_variation.item(), epoch)
 
     print(f"Best Validation Top1: " f"{best_val_top1 * 100:.2f}%")
 
